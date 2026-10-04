@@ -6,12 +6,16 @@ protocol SettingsWindowDelegate: AnyObject {
     var isLaunchAtLoginEnabled: Bool { get }
     var currentHotkeyPreset: HotkeyPreset { get }
     var currentWindowLevel: WindowLevelSetting { get }
+    var currentBackdropStyle: BackdropStyle { get }
+    var currentBackdropOpacity: Double { get }
     var isDismissOnOutsideClickEnabled: Bool { get }
     var isDismissOnEscapeEnabled: Bool { get }
 
     func didToggleLaunchAtLogin()
     func didSelectHotkeyPreset(_ preset: HotkeyPreset)
     func didSelectWindowLevel(_ level: WindowLevelSetting)
+    func didSelectBackdropStyle(_ style: BackdropStyle)
+    func didChangeBackdropOpacity(_ opacity: Double)
     func didToggleDismissOnOutsideClick()
     func didToggleDismissOnEscape()
     func didRequestResetShell()
@@ -39,11 +43,14 @@ final class SettingsWindowController: NSWindowController {
     )
     private let hotkeyPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
     private let windowLevelPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let stylePopUp = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let opacitySlider = NSSlider(value: 0.70, minValue: 0.20, maxValue: 1.0, target: nil, action: nil)
+    private let opacityValueLabel = NSTextField(labelWithString: "70%")
 
     init(delegate: SettingsWindowDelegate) {
         self.delegate = delegate
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 360),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 440440),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -68,6 +75,7 @@ final class SettingsWindowController: NSWindowController {
         container.translatesAutoresizingMaskIntoConstraints = false
 
         addGeneralSection(to: container)
+        addAppearanceSection(to: container)
         addBehaviorSection(to: container)
         addActionsSection(to: container)
 
@@ -90,6 +98,35 @@ final class SettingsWindowController: NSWindowController {
         let levelRow = makePopUpRow(label: "Window Level:", popUp: windowLevelPopUp)
         setupLevelPopUp()
         stack.addArrangedSubview(levelRow)
+    }
+
+    private func addAppearanceSection(to stack: NSStackView) {
+        let title = makeHeaderLabel(title: "Appearance & Opacity")
+        stack.addArrangedSubview(title)
+
+        let styleRow = makePopUpRow(label: "Backdrop Style:", popUp: stylePopUp)
+        setupStylePopUp()
+        stack.addArrangedSubview(styleRow)
+
+        let sliderRow = NSStackView()
+        sliderRow.orientation = .horizontal
+        sliderRow.spacing = 8.0
+
+        let label = NSTextField(labelWithString: "Opacity:")
+        label.alignment = .right
+        label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+
+        opacitySlider.target = self
+        opacitySlider.action = #selector(opacitySliderChanged)
+        opacitySlider.isContinuous = true
+
+        opacityValueLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12.0, weight: .regular)
+        opacityValueLabel.textColor = NSColor.secondaryLabelColor
+
+        sliderRow.addArrangedSubview(label)
+        sliderRow.addArrangedSubview(opacitySlider)
+        sliderRow.addArrangedSubview(opacityValueLabel)
+        stack.addArrangedSubview(sliderRow)
     }
 
     private func addBehaviorSection(to stack: NSStackView) {
@@ -170,6 +207,15 @@ final class SettingsWindowController: NSWindowController {
         windowLevelPopUp.action = #selector(levelSelected)
     }
 
+    private func setupStylePopUp() {
+        stylePopUp.removeAllItems()
+        for style in BackdropStyle.allCases {
+            stylePopUp.addItem(withTitle: style.title)
+        }
+        stylePopUp.target = self
+        stylePopUp.action = #selector(styleSelected)
+    }
+
     func showSettings() {
         refreshValues()
         guard let window else { return }
@@ -189,6 +235,13 @@ final class SettingsWindowController: NSWindowController {
 
         let levelIndex = WindowLevelSetting.allCases.firstIndex(of: delegate.currentWindowLevel) ?? 0
         windowLevelPopUp.selectItem(at: levelIndex)
+
+        let styleIndex = BackdropStyle.allCases.firstIndex(of: delegate.currentBackdropStyle) ?? 0
+        stylePopUp.selectItem(at: styleIndex)
+
+        let opacity = delegate.currentBackdropOpacity
+        opacitySlider.doubleValue = opacity
+        opacityValueLabel.stringValue = "\(Int(round(opacity * 100)))%"
     }
 
     @objc private func launchAtLoginToggled() {
@@ -214,6 +267,20 @@ final class SettingsWindowController: NSWindowController {
         let index = windowLevelPopUp.indexOfSelectedItem
         guard index >= 0, index < WindowLevelSetting.allCases.count else { return }
         delegate?.didSelectWindowLevel(WindowLevelSetting.allCases[index])
+    }
+
+    @objc private func styleSelected() {
+        let index = stylePopUp.indexOfSelectedItem
+        guard index >= 0, index < BackdropStyle.allCases.count else { return }
+        let style = BackdropStyle.allCases[index]
+        delegate?.didSelectBackdropStyle(style)
+        refreshValues()
+    }
+
+    @objc private func opacitySliderChanged() {
+        let opacity = opacitySlider.doubleValue
+        opacityValueLabel.stringValue = "\(Int(round(opacity * 100)))%"
+        delegate?.didChangeBackdropOpacity(opacity)
     }
 
     @objc private func resetShellClicked() {

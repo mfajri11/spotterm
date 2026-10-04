@@ -8,6 +8,18 @@ final class BackdropView: NSVisualEffectView {
     var onResetClicked: (() -> Void)?
     var onQuitClicked: (() -> Void)?
 
+    private var currentStyle: BackdropStyle = .frostedGlass
+    private var currentOpacity: Double = 0.70
+
+    private let solidOverlay: NSBox = {
+        let box = NSBox()
+        box.translatesAutoresizingMaskIntoConstraints = false
+        box.boxType = .custom
+        box.borderWidth = 0
+        box.cornerRadius = cornerRadiusValue
+        return box
+    }()
+
     private let titleLabel: NSTextField = {
         let label = NSTextField(labelWithString: "SpotTerm")
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -30,31 +42,33 @@ final class BackdropView: NSVisualEffectView {
 
     private lazy var resetButton = makeHeaderButton(
         symbolName: "arrow.clockwise",
-        tooltip: "Reset Shell Session",
+        tooltip: "Reset Shell Session (⌘R)",
         action: #selector(resetClicked)
     )
 
     private lazy var settingsButton = makeHeaderButton(
         symbolName: "gearshape",
-        tooltip: "Settings (Launch at Login, Hotkeys...)",
+        tooltip: "Settings (⌘,)",
         action: #selector(settingsClicked)
     )
 
     private lazy var quitButton = makeHeaderButton(
         symbolName: "xmark.circle",
-        tooltip: "Quit SpotTerm (Stop Process)",
+        tooltip: "Quit SpotTerm (⌘Q)",
         action: #selector(quitClicked)
     )
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         setupView()
+        setupOverlay()
         setupHeader()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupView()
+        setupOverlay()
         setupHeader()
     }
 
@@ -69,6 +83,16 @@ final class BackdropView: NSVisualEffectView {
         layer.masksToBounds = true
         layer.borderWidth = Self.borderWidthValue
         updateBorderColor()
+    }
+
+    private func setupOverlay() {
+        addSubview(solidOverlay)
+        NSLayoutConstraint.activate([
+            solidOverlay.leadingAnchor.constraint(equalTo: leadingAnchor),
+            solidOverlay.trailingAnchor.constraint(equalTo: trailingAnchor),
+            solidOverlay.topAnchor.constraint(equalTo: topAnchor),
+            solidOverlay.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
     }
 
     private func setupHeader() {
@@ -114,7 +138,41 @@ final class BackdropView: NSVisualEffectView {
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
+        applyAppearance()
+    }
+
+    func updateAppearanceSettings(style: BackdropStyle, opacity: Double) {
+        self.currentStyle = style
+        self.currentOpacity = min(1.0, max(0.2, opacity))
+        applyAppearance()
+    }
+
+    private func applyAppearance() {
+        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         updateBorderColor()
+
+        switch currentStyle {
+        case .frostedGlass:
+            state = .active
+            material = .hudWindow
+            let tintAlpha = (1.0 - currentOpacity) * 0.3
+            solidOverlay.fillColor = isDark
+                ? NSColor.black.withAlphaComponent(tintAlpha)
+                : NSColor.white.withAlphaComponent(tintAlpha)
+
+        case .translucent:
+            state = .active
+            material = .hudWindow
+            solidOverlay.fillColor = isDark
+                ? NSColor(white: 0.10, alpha: currentOpacity)
+                : NSColor(white: 0.95, alpha: currentOpacity)
+
+        case .solid:
+            state = .inactive
+            solidOverlay.fillColor = isDark
+                ? NSColor(red: 0.11, green: 0.12, blue: 0.13, alpha: currentOpacity)
+                : NSColor(red: 0.97, green: 0.97, blue: 0.98, alpha: currentOpacity)
+        }
     }
 
     private func updateBorderColor() {

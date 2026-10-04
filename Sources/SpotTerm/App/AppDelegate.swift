@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private(set) var currentHotkeyPreset: HotkeyPreset = .optionSpace
     private(set) var currentWindowLevel: WindowLevelSetting = .screenSaver
+    private(set) var currentBackdropStyle: BackdropStyle = .frostedGlass
+    private(set) var currentBackdropOpacity: Double = 0.70
     private(set) var isDismissOnOutsideClickEnabled: Bool = true
     private(set) var isDismissOnEscapeEnabled: Bool = true
 
@@ -50,6 +52,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             terminal.bottomAnchor.constraint(equalTo: backdropView.bottomAnchor, constant: -12.0),
             terminal.topAnchor.constraint(equalTo: backdropView.topAnchor, constant: 32.0)
         ])
+
+        backdropView.updateAppearanceSettings(
+            style: currentBackdropStyle,
+            opacity: currentBackdropOpacity
+        )
 
         backdropView.onSettingsClicked = { [weak self] in
             self?.settingsController.showSettings()
@@ -172,6 +179,17 @@ extension AppDelegate: SettingsWindowDelegate {
     func didSelectWindowLevel(_ level: WindowLevelSetting) {
         currentWindowLevel = level
         panel.level = level.windowLevel
+    }
+
+    func didSelectBackdropStyle(_ style: BackdropStyle) {
+        currentBackdropStyle = style
+        currentBackdropOpacity = style.defaultOpacity
+        backdropView.updateAppearanceSettings(style: style, opacity: currentBackdropOpacity)
+    }
+
+    func didChangeBackdropOpacity(_ opacity: Double) {
+        currentBackdropOpacity = opacity
+        backdropView.updateAppearanceSettings(style: currentBackdropStyle, opacity: opacity)
     }
 
     func didToggleDismissOnOutsideClick() {
