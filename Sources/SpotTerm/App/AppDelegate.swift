@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let terminalController = TerminalController()
     private let hotkeyManager = GlobalHotkeyManager()
     private let loginService = LaunchAtLoginService()
+    private lazy var settingsController = SettingsWindowController(delegate: self)
     private var statusBarController: StatusBarController?
 
     private var outsideClickMonitor: Any?
@@ -29,6 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         stopOutsideClickMonitoring()
         hotkeyManager.teardown()
+        terminalController.terminateProcess()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        summonHUD()
+        return true
     }
 
     private func setupBackdropAndTerminal() {
@@ -122,13 +129,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-extension AppDelegate: StatusBarDelegate {
+extension AppDelegate: StatusBarDelegate, SettingsWindowDelegate {
     var isLaunchAtLoginEnabled: Bool {
         loginService.isEnabled
     }
 
     func didRequestToggleHUD() {
         toggleHUD()
+    }
+
+    func didRequestOpenSettings() {
+        settingsController.showSettings()
     }
 
     func didRequestResetShell() {
@@ -175,6 +186,9 @@ extension AppDelegate: StatusBarDelegate {
     }
 
     func didRequestQuit() {
+        stopOutsideClickMonitoring()
+        hotkeyManager.teardown()
+        terminalController.terminateProcess()
         NSApp.terminate(nil)
     }
 }

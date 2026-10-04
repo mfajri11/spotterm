@@ -41,6 +41,11 @@ final class TerminalController: NSObject {
         startShellSession()
     }
 
+    func terminateProcess() {
+        terminalView.process.terminate()
+        hasActiveProcess = false
+    }
+
     func clearBuffer() {
         terminalView.send(txt: "\u{000c}")
     }

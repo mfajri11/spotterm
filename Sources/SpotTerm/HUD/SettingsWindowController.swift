@@ -1,0 +1,226 @@
+import AppKit
+import Foundation
+
+@MainActor
+protocol SettingsWindowDelegate: AnyObject {
+    var isLaunchAtLoginEnabled: Bool { get }
+    var currentHotkeyPreset: HotkeyPreset { get }
+    var currentWindowLevel: WindowLevelSetting { get }
+    var isDismissOnOutsideClickEnabled: Bool { get }
+    var isDismissOnEscapeEnabled: Bool { get }
+
+    func didToggleLaunchAtLogin()
+    func didSelectHotkeyPreset(_ preset: HotkeyPreset)
+    func didSelectWindowLevel(_ level: WindowLevelSetting)
+    func didToggleDismissOnOutsideClick()
+    func didToggleDismissOnEscape()
+    func didRequestResetShell()
+    func didRequestQuit()
+}
+
+@MainActor
+final class SettingsWindowController: NSWindowController {
+    private weak var delegate: SettingsWindowDelegate?
+
+    private let launchAtLoginCheckbox = NSButton(
+        checkboxWithTitle: "Launch at Login",
+        target: nil,
+        action: nil
+    )
+    private let outsideClickCheckbox = NSButton(
+        checkboxWithTitle: "Dismiss HUD when clicking outside",
+        target: nil,
+        action: nil
+    )
+    private let escapeCheckbox = NSButton(
+        checkboxWithTitle: "Dismiss HUD when pressing Escape",
+        target: nil,
+        action: nil
+    )
+    private let hotkeyPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let windowLevelPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
+
+    init(delegate: SettingsWindowDelegate) {
+        self.delegate = delegate
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 360),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "SpotTerm Settings"
+        window.isReleasedWhenClosed = false
+        super.init(window: window)
+        setupContentView()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+
+    private func setupContentView() {
+        guard let window else { return }
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 16.0
+        container.edgeInsets = NSEdgeInsets(top: 20, left: 24, bottom: 20, right: 24)
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        addGeneralSection(to: container)
+        addBehaviorSection(to: container)
+        addActionsSection(to: container)
+
+        window.contentView = container
+        refreshValues()
+    }
+
+    private func addGeneralSection(to stack: NSStackView) {
+        let title = makeHeaderLabel(title: "General & Hotkeys")
+        stack.addArrangedSubview(title)
+
+        launchAtLoginCheckbox.target = self
+        launchAtLoginCheckbox.action = #selector(launchAtLoginToggled)
+        stack.addArrangedSubview(launchAtLoginCheckbox)
+
+        let hotkeyRow = makePopUpRow(label: "Summon Hotkey:", popUp: hotkeyPopUp)
+        setupHotkeyPopUp()
+        stack.addArrangedSubview(hotkeyRow)
+
+        let levelRow = makePopUpRow(label: "Window Level:", popUp: windowLevelPopUp)
+        setupLevelPopUp()
+        stack.addArrangedSubview(levelRow)
+    }
+
+    private func addBehaviorSection(to stack: NSStackView) {
+        let title = makeHeaderLabel(title: "Dismissal Behavior")
+        stack.addArrangedSubview(title)
+
+        outsideClickCheckbox.target = self
+        outsideClickCheckbox.action = #selector(outsideClickToggled)
+        stack.addArrangedSubview(outsideClickCheckbox)
+
+        escapeCheckbox.target = self
+        escapeCheckbox.action = #selector(escapeToggled)
+        stack.addArrangedSubview(escapeCheckbox)
+    }
+
+    private func addActionsSection(to stack: NSStackView) {
+        let separator = NSBox()
+        separator.boxType = .separator
+        stack.addArrangedSubview(separator)
+
+        let buttonRow = NSStackView()
+        buttonRow.orientation = .horizontal
+        buttonRow.spacing = 12.0
+
+        let resetButton = NSButton(
+            title: "Reset Shell Session",
+            target: self,
+            action: #selector(resetShellClicked)
+        )
+        let quitButton = NSButton(
+            title: "Quit SpotTerm",
+            target: self,
+            action: #selector(quitClicked)
+        )
+        quitButton.hasDestructiveAction = true
+
+        buttonRow.addArrangedSubview(resetButton)
+        buttonRow.addArrangedSubview(quitButton)
+        stack.addArrangedSubview(buttonRow)
+    }
+
+    private func makeHeaderLabel(title: String) -> NSTextField {
+        let label = NSTextField(labelWithString: title)
+        label.font = NSFont.boldSystemFont(ofSize: 13.0)
+        label.textColor = NSColor.labelColor
+        return label
+    }
+
+    private func makePopUpRow(label text: String, popUp: NSPopUpButton) -> NSStackView {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.spacing = 8.0
+
+        let label = NSTextField(labelWithString: text)
+        label.alignment = .right
+        label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+
+        row.addArrangedSubview(label)
+        row.addArrangedSubview(popUp)
+        return row
+    }
+
+    private func setupHotkeyPopUp() {
+        hotkeyPopUp.removeAllItems()
+        for preset in HotkeyPreset.allCases {
+            hotkeyPopUp.addItem(withTitle: preset.title)
+        }
+        hotkeyPopUp.target = self
+        hotkeyPopUp.action = #selector(hotkeySelected)
+    }
+
+    private func setupLevelPopUp() {
+        windowLevelPopUp.removeAllItems()
+        for level in WindowLevelSetting.allCases {
+            windowLevelPopUp.addItem(withTitle: level.title)
+        }
+        windowLevelPopUp.target = self
+        windowLevelPopUp.action = #selector(levelSelected)
+    }
+
+    func showSettings() {
+        refreshValues()
+        guard let window else { return }
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func refreshValues() {
+        guard let delegate else { return }
+        launchAtLoginCheckbox.state = delegate.isLaunchAtLoginEnabled ? .on : .off
+        outsideClickCheckbox.state = delegate.isDismissOnOutsideClickEnabled ? .on : .off
+        escapeCheckbox.state = delegate.isDismissOnEscapeEnabled ? .on : .off
+
+        let hotkeyIndex = HotkeyPreset.allCases.firstIndex(of: delegate.currentHotkeyPreset) ?? 0
+        hotkeyPopUp.selectItem(at: hotkeyIndex)
+
+        let levelIndex = WindowLevelSetting.allCases.firstIndex(of: delegate.currentWindowLevel) ?? 0
+        windowLevelPopUp.selectItem(at: levelIndex)
+    }
+
+    @objc private func launchAtLoginToggled() {
+        delegate?.didToggleLaunchAtLogin()
+        refreshValues()
+    }
+
+    @objc private func outsideClickToggled() {
+        delegate?.didToggleDismissOnOutsideClick()
+    }
+
+    @objc private func escapeToggled() {
+        delegate?.didToggleDismissOnEscape()
+    }
+
+    @objc private func hotkeySelected() {
+        let index = hotkeyPopUp.indexOfSelectedItem
+        guard index >= 0, index < HotkeyPreset.allCases.count else { return }
+        delegate?.didSelectHotkeyPreset(HotkeyPreset.allCases[index])
+    }
+
+    @objc private func levelSelected() {
+        let index = windowLevelPopUp.indexOfSelectedItem
+        guard index >= 0, index < WindowLevelSetting.allCases.count else { return }
+        delegate?.didSelectWindowLevel(WindowLevelSetting.allCases[index])
+    }
+
+    @objc private func resetShellClicked() {
+        delegate?.didRequestResetShell()
+    }
+
+    @objc private func quitClicked() {
+        delegate?.didRequestQuit()
+    }
+}

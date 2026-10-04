@@ -9,6 +9,7 @@ protocol StatusBarDelegate: AnyObject {
     var isLaunchAtLoginEnabled: Bool { get }
 
     func didRequestToggleHUD()
+    func didRequestOpenSettings()
     func didRequestResetShell()
     func didRequestClearBuffer()
     func didSelectWindowLevel(_ level: WindowLevelSetting)
@@ -40,6 +41,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             )
             image?.isTemplate = true
             button.image = image
+            button.toolTip = "SpotTerm - Floating Terminal HUD"
         }
         item.menu = menu
         menu.delegate = self
@@ -59,6 +61,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(toggleHUDAction), keyEquivalent: "")
         toggleItem.target = self
         menu.addItem(toggleItem)
+
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettingsAction), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
         menu.addItem(.separator())
 
         addShellActions()
@@ -151,6 +157,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func toggleHUDAction() {
         delegate?.didRequestToggleHUD()
+    }
+
+    @objc private func openSettingsAction() {
+        delegate?.didRequestOpenSettings()
     }
 
     @objc private func resetShellAction() {

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+APP_PATH="${REPO_DIR}/build/SpotTerm.app"
+
+COMMAND="${1:-open}"
+
+case "${COMMAND}" in
+    open|toggle|summon|start)
+        if [ ! -d "${APP_PATH}" ]; then
+            echo "==> Building SpotTerm app bundle first..."
+            "${SCRIPT_DIR}/build.sh" debug
+        fi
+
+        if ! pgrep -x SpotTerm >/dev/null 2>&1; then
+            echo "==> Starting SpotTerm agent..."
+            open "${APP_PATH}"
+            echo "✓ SpotTerm started! Press ⌥Space from any desktop or full-screen app to summon."
+        else
+            echo "==> SpotTerm is already active. Summoning HUD to current desktop..."
+            open "${APP_PATH}"
+        fi
+        ;;
+
+    quit|kill|stop)
+        if pgrep -x SpotTerm >/dev/null 2>&1; then
+            echo "==> Terminating SpotTerm..."
+            killall SpotTerm 2>/dev/null || true
+            sleep 0.2
+            if pgrep -x SpotTerm >/dev/null 2>&1; then
+                killall -9 SpotTerm 2>/dev/null || true
+            fi
+            echo "✓ SpotTerm has been completely stopped and removed from processes."
+        else
+            echo "SpotTerm is not running."
+        fi
+        ;;
+
+    status)
+        if pgrep -x SpotTerm >/dev/null 2>&1; then
+            PIDS="$(pgrep -x SpotTerm | tr '\n' ' ')"
+            echo "✓ SpotTerm is RUNNING (PID: ${PIDS})"
+        else
+            echo "○ SpotTerm is NOT running."
+        fi
+        ;;
+
+    *)
+        echo "Usage: ./scripts/spotterm [open|quit|status]"
+        echo "  open   - Start SpotTerm or summon the terminal HUD to the active screen"
+        echo "  quit   - Completely stop and terminate SpotTerm processes"
+        echo "  status - Check whether SpotTerm is running"
+        exit 1
+        ;;
+esac
