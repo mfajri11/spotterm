@@ -9,7 +9,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyManager = GlobalHotkeyManager()
     private let loginService = LaunchAtLoginService()
     private lazy var settingsController = SettingsWindowController(delegate: self)
-    private var statusBarController: StatusBarController?
 
     private var outsideClickMonitor: Any?
 
@@ -23,8 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupPanelCallbacks()
         setupTerminalCallbacks()
         setupHotkey()
-        statusBarController = StatusBarController(delegate: self)
         terminalController.startShellSession()
+        summonHUD()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -51,12 +50,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             terminal.bottomAnchor.constraint(equalTo: backdropView.bottomAnchor, constant: -12.0),
             terminal.topAnchor.constraint(equalTo: backdropView.topAnchor, constant: 32.0)
         ])
+
+        backdropView.onSettingsClicked = { [weak self] in
+            self?.settingsController.showSettings()
+        }
+        backdropView.onResetClicked = { [weak self] in
+            self?.terminalController.restartSession()
+        }
+        backdropView.onQuitClicked = { [weak self] in
+            self?.didRequestQuit()
+        }
     }
 
     private func setupPanelCallbacks() {
         panel.onEscapePressed = { [weak self] in
             guard let self, self.isDismissOnEscapeEnabled else { return }
             self.dismissHUD()
+        }
+        panel.onSettingsShortcutPressed = { [weak self] in
+            self?.settingsController.showSettings()
+        }
+        panel.onQuitShortcutPressed = { [weak self] in
+            self?.didRequestQuit()
+        }
+        panel.onResetShortcutPressed = { [weak self] in
+            self?.terminalController.restartSession()
         }
     }
 
@@ -129,30 +147,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-extension AppDelegate: StatusBarDelegate, SettingsWindowDelegate {
+extension AppDelegate: SettingsWindowDelegate {
     var isLaunchAtLoginEnabled: Bool {
         loginService.isEnabled
     }
 
-    func didRequestToggleHUD() {
-        toggleHUD()
-    }
-
-    func didRequestOpenSettings() {
-        settingsController.showSettings()
-    }
-
-    func didRequestResetShell() {
-        terminalController.restartSession()
-    }
-
-    func didRequestClearBuffer() {
-        terminalController.clearBuffer()
-    }
-
-    func didSelectWindowLevel(_ level: WindowLevelSetting) {
-        currentWindowLevel = level
-        panel.level = level.windowLevel
+    func didToggleLaunchAtLogin() {
+        do {
+            _ = try loginService.toggle()
+        } catch {
+            NSLog("Failed to toggle Launch at Login: \(error.localizedDescription)")
+        }
     }
 
     func didSelectHotkeyPreset(_ preset: HotkeyPreset) {
@@ -162,6 +167,11 @@ extension AppDelegate: StatusBarDelegate, SettingsWindowDelegate {
         } catch {
             NSLog("Failed to change hotkey: \(error.localizedDescription)")
         }
+    }
+
+    func didSelectWindowLevel(_ level: WindowLevelSetting) {
+        currentWindowLevel = level
+        panel.level = level.windowLevel
     }
 
     func didToggleDismissOnOutsideClick() {
@@ -177,12 +187,8 @@ extension AppDelegate: StatusBarDelegate, SettingsWindowDelegate {
         isDismissOnEscapeEnabled.toggle()
     }
 
-    func didToggleLaunchAtLogin() {
-        do {
-            _ = try loginService.toggle()
-        } catch {
-            NSLog("Failed to toggle Launch at Login: \(error.localizedDescription)")
-        }
+    func didRequestResetShell() {
+        terminalController.restartSession()
     }
 
     func didRequestQuit() {

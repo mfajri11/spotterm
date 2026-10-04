@@ -4,6 +4,10 @@ final class BackdropView: NSVisualEffectView {
     private static let cornerRadiusValue: CGFloat = 16.0
     private static let borderWidthValue: CGFloat = 1.0
 
+    var onSettingsClicked: (() -> Void)?
+    var onResetClicked: (() -> Void)?
+    var onQuitClicked: (() -> Void)?
+
     private let titleLabel: NSTextField = {
         let label = NSTextField(labelWithString: "SpotTerm")
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -23,6 +27,24 @@ final class BackdropView: NSVisualEffectView {
         box.fillColor = NSColor.systemGreen.withAlphaComponent(0.75)
         return box
     }()
+
+    private lazy var resetButton = makeHeaderButton(
+        symbolName: "arrow.clockwise",
+        tooltip: "Reset Shell Session",
+        action: #selector(resetClicked)
+    )
+
+    private lazy var settingsButton = makeHeaderButton(
+        symbolName: "gearshape",
+        tooltip: "Settings (Launch at Login, Hotkeys...)",
+        action: #selector(settingsClicked)
+    )
+
+    private lazy var quitButton = makeHeaderButton(
+        symbolName: "xmark.circle",
+        tooltip: "Quit SpotTerm (Stop Process)",
+        action: #selector(quitClicked)
+    )
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -53,6 +75,12 @@ final class BackdropView: NSVisualEffectView {
         addSubview(statusIndicator)
         addSubview(titleLabel)
 
+        let actionStack = NSStackView(views: [resetButton, settingsButton, quitButton])
+        actionStack.translatesAutoresizingMaskIntoConstraints = false
+        actionStack.orientation = .horizontal
+        actionStack.spacing = 10.0
+        addSubview(actionStack)
+
         NSLayoutConstraint.activate([
             statusIndicator.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14.0),
             statusIndicator.topAnchor.constraint(equalTo: topAnchor, constant: 11.0),
@@ -60,8 +88,28 @@ final class BackdropView: NSVisualEffectView {
             statusIndicator.heightAnchor.constraint(equalToConstant: 7.0),
 
             titleLabel.leadingAnchor.constraint(equalTo: statusIndicator.trailingAnchor, constant: 8.0),
-            titleLabel.centerYAnchor.constraint(equalTo: statusIndicator.centerYAnchor)
+            titleLabel.centerYAnchor.constraint(equalTo: statusIndicator.centerYAnchor),
+
+            actionStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14.0),
+            actionStack.centerYAnchor.constraint(equalTo: statusIndicator.centerYAnchor)
         ])
+    }
+
+    private func makeHeaderButton(symbolName: String, tooltip: String, action: Selector) -> NSButton {
+        let button = NSButton()
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isBordered = false
+        button.title = ""
+        let config = NSImage.SymbolConfiguration(pointSize: 11.0, weight: .medium)
+        button.image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: tooltip
+        )?.withSymbolConfiguration(config)
+        button.contentTintColor = NSColor.secondaryLabelColor
+        button.toolTip = tooltip
+        button.target = self
+        button.action = action
+        return button
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -80,5 +128,17 @@ final class BackdropView: NSVisualEffectView {
 
     func setStatusColor(_ color: NSColor) {
         statusIndicator.fillColor = color
+    }
+
+    @objc private func resetClicked() {
+        onResetClicked?()
+    }
+
+    @objc private func settingsClicked() {
+        onSettingsClicked?()
+    }
+
+    @objc private func quitClicked() {
+        onQuitClicked?()
     }
 }

@@ -2,6 +2,9 @@ import AppKit
 
 final class TerminalPanel: NSPanel {
     var onEscapePressed: (() -> Void)?
+    var onSettingsShortcutPressed: (() -> Void)?
+    var onQuitShortcutPressed: (() -> Void)?
+    var onResetShortcutPressed: (() -> Void)?
 
     override var canBecomeKey: Bool {
         true
@@ -42,5 +45,24 @@ final class TerminalPanel: NSPanel {
         } else {
             super.cancelOperation(sender)
         }
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.modifierFlags.contains(.command) else {
+            return super.performKeyEquivalent(with: event)
+        }
+        if event.charactersIgnoringModifiers == "," {
+            onSettingsShortcutPressed?()
+            return true
+        }
+        if event.charactersIgnoringModifiers == "q" {
+            onQuitShortcutPressed?()
+            return true
+        }
+        if event.charactersIgnoringModifiers == "r" {
+            onResetShortcutPressed?()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }
