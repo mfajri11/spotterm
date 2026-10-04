@@ -50,13 +50,14 @@ final class SettingsWindowController: NSWindowController {
     init(delegate: SettingsWindowDelegate) {
         self.delegate = delegate
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 440440),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 420),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
         window.title = "SpotTerm Settings"
         window.isReleasedWhenClosed = false
+        window.animationBehavior = .default
         super.init(window: window)
         setupContentView()
     }
@@ -70,8 +71,8 @@ final class SettingsWindowController: NSWindowController {
         let container = NSStackView()
         container.orientation = .vertical
         container.alignment = .leading
-        container.spacing = 16.0
-        container.edgeInsets = NSEdgeInsets(top: 20, left: 24, bottom: 20, right: 24)
+        container.spacing = 14.0
+        container.edgeInsets = NSEdgeInsets(top: 18, left: 24, bottom: 18, right: 24)
         container.translatesAutoresizingMaskIntoConstraints = false
 
         addGeneralSection(to: container)
@@ -79,7 +80,16 @@ final class SettingsWindowController: NSWindowController {
         addBehaviorSection(to: container)
         addActionsSection(to: container)
 
-        window.contentView = container
+        let root = NSView()
+        root.addSubview(container)
+        NSLayoutConstraint.activate([
+            container.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            container.topAnchor.constraint(equalTo: root.topAnchor),
+            container.bottomAnchor.constraint(equalTo: root.bottomAnchor)
+        ])
+
+        window.contentView = root
         refreshValues()
     }
 
@@ -219,7 +229,9 @@ final class SettingsWindowController: NSWindowController {
     func showSettings() {
         refreshValues()
         guard let window else { return }
-        window.center()
+        if !window.isVisible {
+            window.center()
+        }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
