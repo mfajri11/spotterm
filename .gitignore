@@ -5,3 +5,14 @@ build/
 .swiftpm/
 DerivedData/
 *.xcuserstate
+
+# Secrets, Keys & Environment
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.cer
+*.crt
+*.jks
+*.mobileprovision
