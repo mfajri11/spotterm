@@ -1,4 +1,5 @@
 import AppKit
+import Foundation
 @testable import SpotTerm
 import Testing
 
@@ -38,5 +39,16 @@ struct TerminalControllerTests {
         let controller = TerminalController()
         controller.applyAppearance(isDark: false)
         #expect(controller.terminalView.nativeForegroundColor == TerminalController.softDarkTextColor)
+    }
+
+    @Test @MainActor func terminalControllerClearScreenAndBufferExecution() {
+        let controller = TerminalController()
+        controller.terminalView.feed(text: "Prompt line 1\r\nPrompt line 2\r\n")
+        controller.clearScreen()
+        controller.clearBuffer()
+
+        let terminal = controller.terminalView.getTerminal()
+        #expect(terminal.buffer.x == 0)
+        #expect(terminal.buffer.y == 0)
     }
 }

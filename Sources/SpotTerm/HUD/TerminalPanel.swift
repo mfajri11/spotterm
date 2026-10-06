@@ -5,6 +5,7 @@ final class TerminalPanel: NSPanel {
     var onSettingsShortcutPressed: (() -> Void)?
     var onQuitShortcutPressed: (() -> Void)?
     var onResetShortcutPressed: (() -> Void)?
+    var onClearShortcutPressed: (() -> Void)?
 
     override var canBecomeKey: Bool {
         true
@@ -61,6 +62,10 @@ final class TerminalPanel: NSPanel {
         }
         if event.charactersIgnoringModifiers == "r" {
             onResetShortcutPressed?()
+            return true
+        }
+        if event.charactersIgnoringModifiers == "k" {
+            onClearShortcutPressed?()
             return true
         }
         return super.performKeyEquivalent(with: event)

@@ -64,6 +64,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let isDark = backdropView.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) != .aqua
         terminalController.applyAppearance(isDark: isDark)
 
+        backdropView.onClearClicked = { [weak self] in
+            self?.terminalController.clearScreen()
+        }
         backdropView.onSettingsClicked = { [weak self] in
             self?.settingsController.showSettings()
         }
@@ -79,6 +82,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.onEscapePressed = { [weak self] in
             guard let self, self.isDismissOnEscapeEnabled else { return }
             self.dismissHUD()
+        }
+        panel.onClearShortcutPressed = { [weak self] in
+            self?.terminalController.clearScreen()
         }
         panel.onSettingsShortcutPressed = { [weak self] in
             self?.settingsController.showSettings()

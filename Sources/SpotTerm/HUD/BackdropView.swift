@@ -4,6 +4,7 @@ final class BackdropView: NSVisualEffectView {
     private static let cornerRadiusValue: CGFloat = 16.0
     private static let borderWidthValue: CGFloat = 1.0
 
+    var onClearClicked: (() -> Void)?
     var onSettingsClicked: (() -> Void)?
     var onResetClicked: (() -> Void)?
     var onQuitClicked: (() -> Void)?
@@ -40,6 +41,12 @@ final class BackdropView: NSVisualEffectView {
         box.fillColor = NSColor.systemGreen.withAlphaComponent(0.75)
         return box
     }()
+
+    private lazy var clearButton = makeHeaderButton(
+        symbolName: "trash",
+        tooltip: "Clear Screen & Scrollback (⌘K)",
+        action: #selector(clearClicked)
+    )
 
     private lazy var resetButton = makeHeaderButton(
         symbolName: "arrow.clockwise",
@@ -100,7 +107,7 @@ final class BackdropView: NSVisualEffectView {
         addSubview(statusIndicator)
         addSubview(titleLabel)
 
-        let actionStack = NSStackView(views: [resetButton, settingsButton, quitButton])
+        let actionStack = NSStackView(views: [clearButton, resetButton, settingsButton, quitButton])
         actionStack.translatesAutoresizingMaskIntoConstraints = false
         actionStack.orientation = .horizontal
         actionStack.spacing = 10.0
@@ -188,6 +195,10 @@ final class BackdropView: NSVisualEffectView {
 
     func setStatusColor(_ color: NSColor) {
         statusIndicator.fillColor = color
+    }
+
+    @objc private func clearClicked() {
+        onClearClicked?()
     }
 
     @objc private func resetClicked() {

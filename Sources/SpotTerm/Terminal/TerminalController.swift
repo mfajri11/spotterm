@@ -58,8 +58,16 @@ final class TerminalController: NSObject {
         hasActiveProcess = false
     }
 
-    func clearBuffer() {
+    func clearScreen() {
+        terminalView.clearScrollback()
+        terminalView.feed(text: "\u{1b}[3J\u{1b}[H\u{1b}[2J")
+        terminalView.scroll(toPosition: 0.0)
+        terminalView.needsDisplay = true
         terminalView.send(txt: "\u{000c}")
+    }
+
+    func clearBuffer() {
+        clearScreen()
     }
 
     func focus() {
