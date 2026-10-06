@@ -211,6 +211,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             guard let self else { return }
             let clickLocation = NSEvent.mouseLocation
+            if let settingsWindow = self.settingsController.window,
+               settingsWindow.isVisible,
+               settingsWindow.frame.contains(clickLocation) {
+                return
+            }
             if !self.panel.frame.contains(clickLocation) {
                 self.dismissHUD()
             }
@@ -250,6 +255,7 @@ extension AppDelegate: SettingsWindowDelegate {
     func didSelectWindowLevel(_ level: WindowLevelSetting) {
         currentWindowLevel = level
         panel.level = level.windowLevel
+        settingsController.window?.level = NSWindow.Level(level.windowLevel.rawValue + 1)
     }
 
     func didSelectBackdropStyle(_ style: BackdropStyle) {

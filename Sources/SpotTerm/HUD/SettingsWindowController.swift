@@ -58,6 +58,11 @@ final class SettingsWindowController: NSWindowController {
         window.title = "SpotTerm Settings"
         window.isReleasedWhenClosed = false
         window.animationBehavior = .default
+        window.collectionBehavior = [
+            .canJoinAllSpaces,
+            .fullScreenAuxiliary
+        ]
+        window.level = NSWindow.Level(delegate.currentWindowLevel.windowLevel.rawValue + 1)
         super.init(window: window)
         setupContentView()
     }
@@ -101,46 +106,45 @@ final class SettingsWindowController: NSWindowController {
         launchAtLoginCheckbox.action = #selector(launchAtLoginToggled)
         stack.addArrangedSubview(launchAtLoginCheckbox)
 
-        let hotkeyRow = makePopUpRow(label: "Summon Hotkey:", popUp: hotkeyPopUp)
         setupHotkeyPopUp()
+        let hotkeyRow = makeControlRow(text: "Global Hotkey:", popUp: hotkeyPopUp)
         stack.addArrangedSubview(hotkeyRow)
 
-        let levelRow = makePopUpRow(label: "Window Level:", popUp: windowLevelPopUp)
         setupLevelPopUp()
+        let levelRow = makeControlRow(text: "Window Level:", popUp: windowLevelPopUp)
         stack.addArrangedSubview(levelRow)
     }
 
     private func addAppearanceSection(to stack: NSStackView) {
-        let title = makeHeaderLabel(title: "Appearance & Opacity")
+        let title = makeHeaderLabel(title: "Appearance & Blur")
         stack.addArrangedSubview(title)
 
-        let styleRow = makePopUpRow(label: "Backdrop Style:", popUp: stylePopUp)
         setupStylePopUp()
+        let styleRow = makeControlRow(text: "HUD Style:", popUp: stylePopUp)
         stack.addArrangedSubview(styleRow)
 
         let sliderRow = NSStackView()
         sliderRow.orientation = .horizontal
         sliderRow.spacing = 8.0
 
-        let label = NSTextField(labelWithString: "Opacity:")
-        label.alignment = .right
-        label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        let sliderLabel = NSTextField(labelWithString: "Opacity:")
+        sliderLabel.alignment = .right
+        sliderLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
         opacitySlider.target = self
-        opacitySlider.action = #selector(opacitySliderChanged)
-        opacitySlider.isContinuous = true
+        opacitySlider.action = #selector(opacityChanged)
+        opacitySlider.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        opacityValueLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12.0, weight: .regular)
-        opacityValueLabel.textColor = NSColor.secondaryLabelColor
+        opacityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
-        sliderRow.addArrangedSubview(label)
+        sliderRow.addArrangedSubview(sliderLabel)
         sliderRow.addArrangedSubview(opacitySlider)
         sliderRow.addArrangedSubview(opacityValueLabel)
         stack.addArrangedSubview(sliderRow)
     }
 
     private func addBehaviorSection(to stack: NSStackView) {
-        let title = makeHeaderLabel(title: "Dismissal Behavior")
+        let title = makeHeaderLabel(title: "Behavior")
         stack.addArrangedSubview(title)
 
         outsideClickCheckbox.target = self
@@ -153,39 +157,29 @@ final class SettingsWindowController: NSWindowController {
     }
 
     private func addActionsSection(to stack: NSStackView) {
-        let separator = NSBox()
-        separator.boxType = .separator
-        stack.addArrangedSubview(separator)
+        let title = makeHeaderLabel(title: "Session")
+        stack.addArrangedSubview(title)
 
-        let buttonRow = NSStackView()
-        buttonRow.orientation = .horizontal
-        buttonRow.spacing = 12.0
+        let actionsRow = NSStackView()
+        actionsRow.orientation = .horizontal
+        actionsRow.spacing = 10.0
 
-        let resetButton = NSButton(
-            title: "Reset Shell Session",
-            target: self,
-            action: #selector(resetShellClicked)
-        )
-        let quitButton = NSButton(
-            title: "Quit SpotTerm",
-            target: self,
-            action: #selector(quitClicked)
-        )
-        quitButton.hasDestructiveAction = true
+        let resetButton = NSButton(title: "Reset Shell Session", target: self, action: #selector(resetClicked))
+        let quitButton = NSButton(title: "Quit SpotTerm", target: self, action: #selector(quitClicked))
 
-        buttonRow.addArrangedSubview(resetButton)
-        buttonRow.addArrangedSubview(quitButton)
-        stack.addArrangedSubview(buttonRow)
+        actionsRow.addArrangedSubview(resetButton)
+        actionsRow.addArrangedSubview(quitButton)
+        stack.addArrangedSubview(actionsRow)
     }
 
     private func makeHeaderLabel(title: String) -> NSTextField {
         let label = NSTextField(labelWithString: title)
-        label.font = NSFont.boldSystemFont(ofSize: 13.0)
+        label.font = NSFont.systemFont(ofSize: 12.0, weight: .bold)
         label.textColor = NSColor.labelColor
         return label
     }
 
-    private func makePopUpRow(label text: String, popUp: NSPopUpButton) -> NSStackView {
+    private func makeControlRow(text: String, popUp: NSPopUpButton) -> NSStackView {
         let row = NSStackView()
         row.orientation = .horizontal
         row.spacing = 8.0
@@ -229,6 +223,9 @@ final class SettingsWindowController: NSWindowController {
     func showSettings() {
         refreshValues()
         guard let window else { return }
+        if let delegate {
+            window.level = NSWindow.Level(delegate.currentWindowLevel.windowLevel.rawValue + 1)
+        }
         if !window.isVisible {
             window.center()
         }
@@ -278,24 +275,24 @@ final class SettingsWindowController: NSWindowController {
     @objc private func levelSelected() {
         let index = windowLevelPopUp.indexOfSelectedItem
         guard index >= 0, index < WindowLevelSetting.allCases.count else { return }
-        delegate?.didSelectWindowLevel(WindowLevelSetting.allCases[index])
+        let selected = WindowLevelSetting.allCases[index]
+        window?.level = NSWindow.Level(selected.windowLevel.rawValue + 1)
+        delegate?.didSelectWindowLevel(selected)
     }
 
     @objc private func styleSelected() {
         let index = stylePopUp.indexOfSelectedItem
         guard index >= 0, index < BackdropStyle.allCases.count else { return }
-        let style = BackdropStyle.allCases[index]
-        delegate?.didSelectBackdropStyle(style)
-        refreshValues()
+        delegate?.didSelectBackdropStyle(BackdropStyle.allCases[index])
     }
 
-    @objc private func opacitySliderChanged() {
+    @objc private func opacityChanged() {
         let opacity = opacitySlider.doubleValue
         opacityValueLabel.stringValue = "\(Int(round(opacity * 100)))%"
         delegate?.didChangeBackdropOpacity(opacity)
     }
 
-    @objc private func resetShellClicked() {
+    @objc private func resetClicked() {
         delegate?.didRequestResetShell()
     }
 
