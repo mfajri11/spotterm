@@ -7,6 +7,7 @@ final class BackdropView: NSVisualEffectView {
     var onSettingsClicked: (() -> Void)?
     var onResetClicked: (() -> Void)?
     var onQuitClicked: (() -> Void)?
+    var onAppearanceChanged: ((Bool) -> Void)?
 
     private var currentStyle: BackdropStyle = .frostedGlass
     private var currentOpacity: Double = 0.70
@@ -150,6 +151,7 @@ final class BackdropView: NSVisualEffectView {
     private func applyAppearance() {
         let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         updateBorderColor()
+        onAppearanceChanged?(isDark)
 
         switch currentStyle {
         case .frostedGlass:

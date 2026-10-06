@@ -58,6 +58,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             opacity: currentBackdropOpacity
         )
 
+        backdropView.onAppearanceChanged = { [weak self] isDark in
+            self?.terminalController.applyAppearance(isDark: isDark)
+        }
+        let isDark = backdropView.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) != .aqua
+        terminalController.applyAppearance(isDark: isDark)
+
         backdropView.onSettingsClicked = { [weak self] in
             self?.settingsController.showSettings()
         }
