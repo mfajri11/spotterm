@@ -26,6 +26,56 @@ final class TerminalController: NSObject {
         terminalView.caretColor = Self.softWhiteTextColor.withAlphaComponent(0.85)
         terminalView.font = NSFont.monospacedSystemFont(ofSize: 13.0, weight: .regular)
         terminalView.translatesAutoresizingMaskIntoConstraints = false
+        setupContextMenu()
+    }
+
+    private func setupContextMenu() {
+        let menu = NSMenu(title: "Terminal")
+        menu.delegate = self
+
+        let copyItem = NSMenuItem(
+            title: "Copy",
+            action: #selector(contextCopyAction),
+            keyEquivalent: "c"
+        )
+        copyItem.target = self
+        menu.addItem(copyItem)
+
+        let pasteItem = NSMenuItem(
+            title: "Paste",
+            action: #selector(contextPasteAction),
+            keyEquivalent: "v"
+        )
+        pasteItem.target = self
+        menu.addItem(pasteItem)
+
+        let selectAllItem = NSMenuItem(
+            title: "Select All",
+            action: #selector(contextSelectAllAction),
+            keyEquivalent: "a"
+        )
+        selectAllItem.target = self
+        menu.addItem(selectAllItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let clearItem = NSMenuItem(
+            title: "Clear Screen",
+            action: #selector(contextClearAction),
+            keyEquivalent: "k"
+        )
+        clearItem.target = self
+        menu.addItem(clearItem)
+
+        let resetItem = NSMenuItem(
+            title: "Reset Session",
+            action: #selector(contextResetAction),
+            keyEquivalent: "r"
+        )
+        resetItem.target = self
+        menu.addItem(resetItem)
+
+        terminalView.menu = menu
     }
 
     func applyAppearance(isDark: Bool) {
@@ -70,8 +120,66 @@ final class TerminalController: NSObject {
         clearScreen()
     }
 
+    func copySelection() {
+        guard let selection = terminalView.selection, selection.active else { return }
+        let text = selection.getSelectedText()
+        guard !text.isEmpty else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+
+    func pasteClipboard() {
+        terminalView.paste(self)
+    }
+
+    func selectAllText() {
+        terminalView.selectAll(self)
+    }
+
     func focus() {
         terminalView.window?.makeFirstResponder(terminalView)
+    }
+
+    @objc private func contextCopyAction() {
+        copySelection()
+    }
+
+    @objc private func contextPasteAction() {
+        pasteClipboard()
+    }
+
+    @objc private func contextSelectAllAction() {
+        selectAllText()
+    }
+
+    @objc private func contextClearAction() {
+        clearScreen()
+    }
+
+    @objc private func contextResetAction() {
+        restartSession()
+    }
+}
+
+extension TerminalController: NSMenuDelegate {
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        for item in menu.items {
+            switch item.action {
+            case #selector(contextCopyAction):
+                let hasSelection = terminalView.selection?.active == true
+                let hasText = !(terminalView.selection?.getSelectedText().isEmpty ?? true)
+                item.isEnabled = hasSelection && hasText
+            case #selector(contextPasteAction):
+                item.isEnabled = NSPasteboard.general.string(forType: .string)?.isEmpty == false
+            case #selector(contextSelectAllAction),
+                 #selector(contextClearAction),
+                 #selector(contextResetAction):
+                item.isEnabled = true
+            default:
+                break
+            }
+        }
     }
 }
 

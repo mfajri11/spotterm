@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var isDismissOnEscapeEnabled: Bool = true
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        setupMainMenu()
         setupBackdropAndTerminal()
         setupPanelCallbacks()
         setupTerminalCallbacks()
@@ -37,6 +38,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         summonHUD()
         return true
+    }
+
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(
+            withTitle: "About SpotTerm",
+            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
+            keyEquivalent: ""
+        )
+        appMenu.addItem(NSMenuItem.separator())
+        let settingsItem = NSMenuItem(
+            title: "Settings…",
+            action: #selector(openSettingsFromMenu),
+            keyEquivalent: ","
+        )
+        settingsItem.target = self
+        appMenu.addItem(settingsItem)
+        appMenu.addItem(NSMenuItem.separator())
+        let quitItem = NSMenuItem(
+            title: "Quit SpotTerm",
+            action: #selector(quitFromMenu),
+            keyEquivalent: "q"
+        )
+        quitItem.target = self
+        appMenu.addItem(quitItem)
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+
+        let editMenuItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+
+        NSApp.mainMenu = mainMenu
+    }
+
+    @objc private func openSettingsFromMenu() {
+        settingsController.showSettings()
+    }
+
+    @objc private func quitFromMenu() {
+        didRequestQuit()
     }
 
     private func setupBackdropAndTerminal() {
@@ -85,6 +135,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         panel.onClearShortcutPressed = { [weak self] in
             self?.terminalController.clearScreen()
+        }
+        panel.onCopyShortcutPressed = { [weak self] in
+            self?.terminalController.copySelection()
+        }
+        panel.onPasteShortcutPressed = { [weak self] in
+            self?.terminalController.pasteClipboard()
+        }
+        panel.onSelectAllShortcutPressed = { [weak self] in
+            self?.terminalController.selectAllText()
         }
         panel.onSettingsShortcutPressed = { [weak self] in
             self?.settingsController.showSettings()

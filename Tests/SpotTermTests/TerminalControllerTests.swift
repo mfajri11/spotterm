@@ -51,4 +51,42 @@ struct TerminalControllerTests {
         #expect(terminal.buffer.x == 0)
         #expect(terminal.buffer.y == 0)
     }
+
+    @Test @MainActor func terminalControllerCopyAndPasteBehavior() {
+        let controller = TerminalController()
+        let pasteboard = NSPasteboard.general
+
+        // Before any selection, copySelection should not overwrite existing clipboard
+        pasteboard.clearContents()
+        pasteboard.setString("Preserved Clipboard", forType: .string)
+        controller.copySelection()
+        #expect(pasteboard.string(forType: .string) == "Preserved Clipboard")
+
+        // Feed some text and select all
+        controller.terminalView.feed(text: "Hello SpotTerm\r\n")
+        controller.selectAllText()
+        controller.copySelection()
+
+        // Clipboard should now contain selected text
+        let copied = pasteboard.string(forType: .string)
+        #expect(copied?.contains("Hello SpotTerm") == true)
+
+        // Paste should execute cleanly without error
+        controller.pasteClipboard()
+    }
+
+    @Test @MainActor func terminalControllerContextMenuItems() {
+        let controller = TerminalController()
+        guard let menu = controller.terminalView.menu else {
+            Issue.record("Expected terminalView to have context menu")
+            return
+        }
+
+        let titles = menu.items.map(\.title)
+        #expect(titles.contains("Copy"))
+        #expect(titles.contains("Paste"))
+        #expect(titles.contains("Select All"))
+        #expect(titles.contains("Clear Screen"))
+        #expect(titles.contains("Reset Session"))
+    }
 }
