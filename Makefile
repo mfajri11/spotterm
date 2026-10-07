@@ -1,4 +1,4 @@
-.PHONY: all setup fmt lint test build release run open quit status ci clean
+.PHONY: all setup fmt lint test build release dmg run open quit status ci clean
 
 all: build
 
@@ -25,6 +25,10 @@ build:
 release:
 	@chmod +x scripts/*.sh scripts/spotterm 2>/dev/null || true
 	@./scripts/build.sh release
+
+dmg:
+	@chmod +x scripts/*.sh scripts/spotterm 2>/dev/null || true
+	@./scripts/dmg.sh
 
 run: open
 
